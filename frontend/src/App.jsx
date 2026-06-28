@@ -2,13 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import EndpointSidebar from './components/EndpointSidebar';
 import PipelineVisualizer from './components/PipelineVisualizer';
 import WebhookTerminal from './components/WebhookTerminal';
+import AuthScreen from './components/AuthScreen';
 import { Copy, Check, Terminal, Play, Zap, Database } from 'lucide-react';
+import { auth, isFirebaseConfigured, signOut } from './firebase';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
 
-
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [mockUserActive, setMockUserActive] = useState(false);
+
   const [endpoints, setEndpoints] = useState([]);
   const [activeEndpointId, setActiveEndpointId] = useState('');
   const [webhooks, setWebhooks] = useState([]);
@@ -23,11 +28,74 @@ export default function App() {
 
   const socketRef = useRef(null);
 
+  // Monitor Firebase Auth State
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setAuthLoading(false);
+      return;
+    }
+
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        setMockUserActive(false);
+      } else {
+        setUser(null);
+        setMockUserActive(false);
+        // Clear state on log out
+        setEndpoints([]);
+        setActiveEndpointId('');
+        setWebhooks([]);
+        setActiveWebhook(null);
+        setLatestWebhook(null);
+      }
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleMockLogin = (mockedUser) => {
+    setUser(mockedUser);
+    setMockUserActive(true);
+  };
+
+  const handleLogOut = async () => {
+    if (isFirebaseConfigured && !mockUserActive) {
+      await signOut(auth);
+    } else {
+      setUser(null);
+      setMockUserActive(false);
+      setEndpoints([]);
+      setActiveEndpointId('');
+      setWebhooks([]);
+      setActiveWebhook(null);
+      setLatestWebhook(null);
+    }
+  };
+
+  // Helper to fetch authorization header
+  const getAuthHeaders = async () => {
+    const headers = {};
+    if (mockUserActive || !isFirebaseConfigured) {
+      headers['Authorization'] = 'Bearer mock-dev-token';
+    } else if (user) {
+      const token = await user.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
+
   // Check backend availability on mount
   useEffect(() => {
+    if (!user) return;
+
     async function loadInitialData() {
       try {
-        const res = await fetch(`${BACKEND_URL}/v1/endpoints`);
+        const authHeaders = await getAuthHeaders();
+        const res = await fetch(`${BACKEND_URL}/v1/endpoints`, {
+          headers: authHeaders
+        });
         if (!res.ok) throw new Error('API Error');
         const data = await res.json();
         setEndpoints(data);
@@ -48,11 +116,11 @@ export default function App() {
       }
     }
     loadInitialData();
-  }, []);
+  }, [user]);
 
   // Fetch webhook logs when active endpoint changes
   useEffect(() => {
-    if (!activeEndpointId) return;
+    if (!activeEndpointId || !user) return;
 
     if (isDemoMode) {
       // Mock history for demo endpoints
@@ -64,7 +132,11 @@ export default function App() {
 
     async function fetchLogs() {
       try {
-        const res = await fetch(`${BACKEND_URL}/v1/endpoints/${activeEndpointId}/webhooks`);
+        const authHeaders = await getAuthHeaders();
+        const res = await fetch(`${BACKEND_URL}/v1/endpoints/${activeEndpointId}/webhooks`, {
+          headers: authHeaders
+        });
+        if (!res.ok) throw new Error('Failed to fetch logs');
         const data = await res.json();
         setWebhooks(data);
         setActiveWebhook(data[0] || null);
@@ -73,11 +145,11 @@ export default function App() {
       }
     }
     fetchLogs();
-  }, [activeEndpointId, isDemoMode]);
+  }, [activeEndpointId, isDemoMode, user]);
 
   // Manage WS connection for active endpoint
   useEffect(() => {
-    if (!activeEndpointId || isDemoMode) {
+    if (!activeEndpointId || isDemoMode || !user) {
       setWsConnected(false);
       return;
     }
@@ -118,7 +190,7 @@ export default function App() {
     return () => {
       if (ws) ws.close();
     };
-  }, [activeEndpointId, endpoints, isDemoMode]);
+  }, [activeEndpointId, endpoints, isDemoMode, user]);
 
   // Endpoint CRUD
   const handleCreateEndpoint = async (name) => {
@@ -135,9 +207,13 @@ export default function App() {
     }
 
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await fetch(`${BACKEND_URL}/v1/endpoints`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 
+          'content-type': 'application/json',
+          ...authHeaders
+        },
         body: JSON.stringify({ name })
       });
       const data = await res.json();
@@ -277,6 +353,28 @@ export default function App() {
     setTimeout(() => setCopiedState(false), 2000);
   };
 
+  if (authLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#06060f',
+        color: '#fff'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <span className="spinner" style={{ width: '32px', height: '32px' }}></span>
+          <span style={{ fontSize: '13px', color: 'var(--text-dim)' }}>Securing Gateway Connection...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen onMockLogin={handleMockLogin} />;
+  }
+
   return (
     <div className="app-container">
       <EndpointSidebar
@@ -286,6 +384,8 @@ export default function App() {
         onCreateEndpoint={handleCreateEndpoint}
         isCreating={isCreating}
         wsConnected={wsConnected}
+        user={user}
+        onLogOut={handleLogOut}
       />
 
       <main className="main-content">

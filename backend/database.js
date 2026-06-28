@@ -23,6 +23,7 @@ export async function init() {
     
     // Create indexes for optimization
     await mongoDb.collection('endpoints').createIndex({ id: 1 }, { unique: true });
+    await mongoDb.collection('endpoints').createIndex({ userId: 1 });
     await mongoDb.collection('webhooks').createIndex({ endpoint_id: 1 });
     await mongoDb.collection('webhooks').createIndex({ received_at: -1 });
     
@@ -40,6 +41,7 @@ export async function init() {
         id VARCHAR(50) PRIMARY KEY,
         token VARCHAR(100) NOT NULL,
         name VARCHAR(100),
+        userId VARCHAR(100) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -74,6 +76,7 @@ export async function init() {
         id TEXT PRIMARY KEY,
         token TEXT NOT NULL,
         name TEXT,
+        userId TEXT DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -98,23 +101,23 @@ export async function init() {
   }
 }
 
-export async function createEndpoint(id, token, name) {
+export async function createEndpoint(id, token, name, userId = null) {
   if (dbType === 'mongodb') {
-    const doc = { id, token, name, created_at: new Date() };
+    const doc = { id, token, name, userId, created_at: new Date() };
     await mongoDb.collection('endpoints').insertOne(doc);
     return doc;
   } else if (dbType === 'postgres') {
     await pgPool.query(
-      'INSERT INTO endpoints (id, token, name) VALUES ($1, $2, $3)',
-      [id, token, name]
+      'INSERT INTO endpoints (id, token, name, userId) VALUES ($1, $2, $3, $4)',
+      [id, token, name, userId]
     );
   } else {
     await sqliteDb.run(
-      'INSERT INTO endpoints (id, token, name) VALUES (?, ?, ?)',
-      [id, token, name]
+      'INSERT INTO endpoints (id, token, name, userId) VALUES (?, ?, ?, ?)',
+      [id, token, name, userId]
     );
   }
-  return { id, token, name };
+  return { id, token, name, userId };
 }
 
 export async function getEndpoint(id) {
@@ -126,6 +129,21 @@ export async function getEndpoint(id) {
   } else {
     const row = await sqliteDb.get('SELECT * FROM endpoints WHERE id = ?', [id]);
     return row || null;
+  }
+}
+
+export async function getEndpointsForUser(userId) {
+  if (dbType === 'mongodb') {
+    return await mongoDb.collection('endpoints')
+      .find({ userId })
+      .sort({ created_at: -1 })
+      .toArray();
+  } else if (dbType === 'postgres') {
+    const res = await pgPool.query('SELECT * FROM endpoints WHERE userId = $1 ORDER BY created_at DESC', [userId]);
+    return res.rows;
+  } else {
+    const rows = await sqliteDb.all('SELECT * FROM endpoints WHERE userId = ? ORDER BY created_at DESC', [userId]);
+    return rows;
   }
 }
 

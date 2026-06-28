@@ -7,7 +7,9 @@ export default function EndpointSidebar({
   onSelectEndpoint, 
   onCreateEndpoint, 
   isCreating,
-  wsConnected 
+  wsConnected,
+  user,
+  onLogOut
 }) {
   const [newEndpointName, setNewEndpointName] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -131,6 +133,43 @@ export default function EndpointSidebar({
           </button>
         )}
       </div>
+
+      {user && (
+        <div className="sidebar-footer" style={{
+          marginTop: 'auto',
+          padding: '16px 8px 0px 8px',
+          borderTop: '1px solid var(--glass-border)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          background: 'transparent'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Logged in as</span>
+            <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={user.email}>
+              {user.email}
+            </span>
+          </div>
+          <button 
+            onClick={onLogOut}
+            className="btn-icon" 
+            style={{ 
+              width: '100%', 
+              padding: '6px 12px', 
+              fontSize: '11px',
+              color: '#fda4af',
+              background: 'rgba(244, 63, 94, 0.08)',
+              border: '1px solid rgba(244, 63, 94, 0.2)',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              textAlign: 'center',
+              display: 'block'
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
