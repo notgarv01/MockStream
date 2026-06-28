@@ -176,6 +176,15 @@ fastify.all('/ingest/:endpoint_id/*', async (request, reply) => {
   });
 });
 
+// Health check
+fastify.get('/v1/health', async (request, reply) => {
+  return {
+    status: 'ok',
+    database: db.dbType,
+    timestamp: new Date().toISOString()
+  };
+});
+
 // List endpoints
 fastify.get('/v1/endpoints', { preHandler: [fastify.authenticate] }, async (request, reply) => {
   const endpoints = await db.getEndpointsForUser(request.user.uid);

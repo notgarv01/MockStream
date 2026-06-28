@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-let dbType = 'sqlite'; // 'sqlite', 'postgres', or 'mongodb'
+export let dbType = 'sqlite'; // 'sqlite', 'postgres', or 'mongodb'
 let sqliteDb = null;
 let pgPool = null;
 let mongoClient = null;
