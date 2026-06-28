@@ -118,6 +118,11 @@ export default function App() {
         const res = await fetch(`${BACKEND_URL}/v1/endpoints`, {
           headers: authHeaders
         });
+        if (res.status === 401) {
+          console.warn('Unauthorized request. Session expired or invalid. Logging out.');
+          handleLogOut();
+          return;
+        }
         if (!res.ok) throw new Error('Failed to load endpoints');
         const data = await res.json();
         setEndpoints(data);
@@ -149,6 +154,11 @@ export default function App() {
         const res = await fetch(`${BACKEND_URL}/v1/endpoints/${activeEndpointId}/webhooks`, {
           headers: authHeaders
         });
+        if (res.status === 401) {
+          console.warn('Unauthorized request. Session expired or invalid. Logging out.');
+          handleLogOut();
+          return;
+        }
         if (!res.ok) throw new Error('Failed to fetch logs');
         const data = await res.json();
         setWebhooks(data);

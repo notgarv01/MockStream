@@ -49,11 +49,11 @@ export default function EndpointSidebar({
             <p style={{ fontSize: '11.5px' }}>No endpoints created yet.</p>
           </div>
         ) : (
-          endpoints.map((ep) => {
+          endpoints.map((ep, idx) => {
             const isActive = ep.id === activeEndpointId;
             return (
               <div
-                key={ep.id}
+                key={ep.id || ep._id || idx}
                 className={`endpoint-item glass ${isActive ? 'active' : ''}`}
                 onClick={() => onSelectEndpoint(ep.id)}
               >
