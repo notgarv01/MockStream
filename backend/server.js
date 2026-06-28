@@ -10,7 +10,7 @@ import * as pubsub from './pubsub.js';
 dotenv.config();
 
 let isFirebaseConfigured = false;
-if (process.env.FIREBASE_PROJECT_ID) {
+if (process.env.NODE_ENV === 'production' && process.env.FIREBASE_PROJECT_ID) {
   try {
     if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
       admin.initializeApp({
@@ -31,7 +31,7 @@ if (process.env.FIREBASE_PROJECT_ID) {
     console.error('Failed to initialize Firebase Admin SDK:', err.message);
   }
 } else {
-  console.warn('⚠️ WARNING: Firebase environment variables are not fully configured. API endpoints will run without authentication controls.');
+  console.warn('⚠️ WARNING: Running in development mode. Firebase Auth is disabled, API endpoints will run in sandbox mode.');
 }
 
 const fastify = Fastify({

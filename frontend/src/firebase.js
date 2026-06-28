@@ -17,7 +17,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const isFirebaseConfigured = !!firebaseConfig.apiKey;
+const isFirebaseConfigured = !import.meta.env.DEV && !!firebaseConfig.apiKey;
 
 let app;
 let auth;
@@ -30,7 +30,7 @@ if (isFirebaseConfigured) {
     console.error("Failed to initialize Firebase Client SDK:", err.message);
   }
 } else {
-  console.warn("⚠️ WARNING: Firebase Auth is running in bypass/mock mode since environment configuration is missing.");
+  console.warn("⚠️ WARNING: Firebase Auth is running in bypass/mock mode since development mode is active or configuration is missing.");
 }
 
 export { auth, isFirebaseConfigured };
