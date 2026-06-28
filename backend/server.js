@@ -3,7 +3,7 @@ import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
-import admin from 'firebase-admin';
+import crypto from 'crypto';
 import * as db from './database.js';
 import * as pubsub from './pubsub.js';
 
@@ -11,27 +11,79 @@ dotenv.config();
 
 let isFirebaseConfigured = false;
 if (process.env.FIREBASE_PROJECT_ID) {
-  try {
-    if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        }),
-      });
-    } else {
-      admin.initializeApp({
-        projectId: process.env.FIREBASE_PROJECT_ID
-      });
-    }
-    isFirebaseConfigured = true;
-    console.log('Firebase Auth initialized successfully');
-  } catch (err) {
-    console.error('Failed to initialize Firebase Admin SDK:', err.message);
-  }
+  isFirebaseConfigured = true;
+  console.log('Firebase Auth custom verification module initialized successfully');
 } else {
   console.warn('⚠️ WARNING: Firebase environment variables are not fully configured. API endpoints will run without authentication controls.');
+}
+
+// Google public key caching
+let googlePublicKeyCache = {};
+let cacheExpiry = 0;
+
+async function fetchGooglePublicKeys() {
+  const now = Date.now();
+  if (now < cacheExpiry && Object.keys(googlePublicKeyCache).length > 0) {
+    return googlePublicKeyCache;
+  }
+  
+  try {
+    const res = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+    if (!res.ok) throw new Error('Failed to fetch keys');
+    
+    const cacheControl = res.headers.get('cache-control');
+    let maxAge = 3600;
+    if (cacheControl) {
+      const match = cacheControl.match(/max-age=(\d+)/);
+      if (match) maxAge = parseInt(match[1], 10);
+    }
+    
+    googlePublicKeyCache = await res.json();
+    cacheExpiry = now + (maxAge * 1000);
+    return googlePublicKeyCache;
+  } catch (err) {
+    console.error('Failed to retrieve Google public certificates:', err.message);
+    throw err;
+  }
+}
+
+async function verifyFirebaseToken(token, projectId) {
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Invalid JWT format');
+  
+  const [headerB64, payloadB64, signatureB64] = parts;
+  
+  const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8'));
+  if (header.alg !== 'RS256') throw new Error('Unsupported algorithm');
+  if (!header.kid) throw new Error('Missing kid header');
+  
+  const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+  const now = Math.floor(Date.now() / 1000);
+  
+  if (payload.aud !== projectId) throw new Error('Audience mismatch');
+  if (payload.iss !== `https://securetoken.google.com/${projectId}`) throw new Error('Issuer mismatch');
+  if (payload.exp < now) throw new Error('Token expired');
+  
+  const keys = await fetchGooglePublicKeys();
+  const cert = keys[header.kid];
+  if (!cert) throw new Error('Public key not found for kid');
+  
+  const data = Buffer.from(`${headerB64}.${payloadB64}`);
+  const signature = Buffer.from(signatureB64, 'base64url');
+  
+  const verified = crypto.verify(
+    'sha256',
+    data,
+    {
+      key: cert,
+      padding: crypto.constants.RSA_PKCS1_PADDING
+    },
+    signature
+  );
+  
+  if (!verified) throw new Error('Signature verification failed');
+  
+  return payload;
 }
 
 const fastify = Fastify({
@@ -51,7 +103,6 @@ await fastify.register(websocket);
 // Authenticate decorator hook
 fastify.decorate('authenticate', async (request, reply) => {
   if (!isFirebaseConfigured) {
-    // Development fallback
     request.user = { uid: 'dev_user_uid', email: 'dev@mockstream.dev' };
     return;
   }
@@ -62,10 +113,16 @@ fastify.decorate('authenticate', async (request, reply) => {
       return reply.code(401).send({ error: 'Unauthorized', message: 'Missing Authorization header' });
     }
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    request.user = decodedToken;
+    
+    // Validate custom JWT
+    const decodedToken = await verifyFirebaseToken(token, process.env.FIREBASE_PROJECT_ID);
+    request.user = {
+      uid: decodedToken.sub,
+      email: decodedToken.email
+    };
   } catch (err) {
-    return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid or expired Firebase ID token' });
+    fastify.log.error(`Firebase token verification failed: ${err.message}`);
+    return reply.code(401).send({ error: 'Unauthorized', message: `Invalid or expired Firebase ID token: ${err.message}` });
   }
 });
 
