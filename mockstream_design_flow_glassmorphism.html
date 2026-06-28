@@ -1,0 +1,525 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body, .root {
+    font-family: 'Inter', sans-serif;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  .root {
+    background: linear-gradient(135deg, #0f0c29 0%, #1a1040 30%, #0d1b2a 60%, #0a0a1a 100%);
+    padding: 32px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .root::before {
+    content: '';
+    position: absolute;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%);
+    top: -100px; left: -100px;
+    pointer-events: none;
+  }
+  .root::after {
+    content: '';
+    position: absolute;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%);
+    bottom: -80px; right: -80px;
+    pointer-events: none;
+  }
+
+  .glass {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .glass-strong {
+    background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 14px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+  }
+  .header p {
+    font-size: 13px;
+    color: rgba(203,213,225,0.6);
+    letter-spacing: 0.3px;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .badge-purple {
+    background: rgba(139,92,246,0.2);
+    border: 1px solid rgba(139,92,246,0.4);
+    color: #c4b5fd;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #8b5cf6; }
+  .dot-green { background: #10b981; }
+
+  /* SECTION LABEL */
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: rgba(148,163,184,0.5);
+    margin-bottom: 10px;
+    padding-left: 4px;
+  }
+
+  /* FLOW GRID */
+  .flow-row {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .flow-row-3 { grid-template-columns: repeat(3, 1fr); }
+  .flow-row-2 { grid-template-columns: repeat(2, 1fr); }
+  .flow-row-1 { grid-template-columns: 1fr; }
+
+  .flow-card {
+    padding: 16px 18px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+  .flow-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.28);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .flow-card-icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .flow-card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #f1f5f9;
+    margin-bottom: 4px;
+  }
+  .flow-card-desc {
+    font-size: 11px;
+    color: rgba(148,163,184,0.7);
+    line-height: 1.5;
+  }
+  .flow-card-tag {
+    position: absolute;
+    top: 10px; right: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+  }
+  .tag-blue { background: rgba(59,130,246,0.2); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+  .tag-green { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+  .tag-purple { background: rgba(139,92,246,0.2); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
+  .tag-amber { background: rgba(245,158,11,0.2); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .tag-red { background: rgba(239,68,68,0.18); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+
+  /* ACCENT LINE on card left */
+  .accent-blue { border-left: 2px solid rgba(99,102,241,0.6) !important; }
+  .accent-green { border-left: 2px solid rgba(16,185,129,0.6) !important; }
+  .accent-amber { border-left: 2px solid rgba(245,158,11,0.6) !important; }
+  .accent-red { border-left: 2px solid rgba(239,68,68,0.5) !important; }
+  .accent-purple { border-left: 2px solid rgba(139,92,246,0.6) !important; }
+  .accent-teal { border-left: 2px solid rgba(20,184,166,0.6) !important; }
+
+  /* CONNECTOR */
+  .connector {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 28px;
+    margin: 2px 0;
+    gap: 8px;
+    color: rgba(148,163,184,0.4);
+    font-size: 11px;
+    letter-spacing: 0.3px;
+  }
+  .connector-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(148,163,184,0.2), transparent);
+    max-width: 120px;
+  }
+  .connector-arrow {
+    font-size: 14px;
+    color: rgba(148,163,184,0.5);
+  }
+
+  /* PIPELINE ROW */
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-bottom: 14px;
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+  }
+  .pipeline-step {
+    flex: 1;
+    padding: 14px 14px;
+    border-right: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.04);
+    position: relative;
+  }
+  .pipeline-step:last-child { border-right: none; }
+  .pipeline-step-num {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(148,163,184,0.4);
+    margin-bottom: 4px;
+  }
+  .pipeline-step-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #e2e8f0;
+    margin-bottom: 2px;
+  }
+  .pipeline-step-sub {
+    font-size: 10px;
+    color: rgba(148,163,184,0.55);
+  }
+  .pulse {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 6px #10b981;
+    animation: pulsate 2s infinite;
+  }
+  @keyframes pulsate {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* WEBSOCKET SPEC CARD */
+  .spec-card {
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .spec-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(148,163,184,0.6);
+    letter-spacing: 0.4px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .code-block {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    line-height: 1.7;
+    color: #94a3b8;
+    overflow-x: auto;
+  }
+  .code-green { color: #6ee7b7; }
+  .code-blue { color: #93c5fd; }
+  .code-purple { color: #c4b5fd; }
+  .code-amber { color: #fcd34d; }
+
+  /* FORMULA */
+  .formula-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 10px;
+    margin-top: 10px;
+  }
+  .formula-icon { font-size: 18px; }
+  .formula-text { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #c4b5fd; }
+  .formula-note { font-size: 10px; color: rgba(148,163,184,0.5); margin-top: 3px; }
+
+  /* TECH STACK */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .tech-item {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .tech-icon-wrap {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .icon-bg-blue { background: rgba(59,130,246,0.15); }
+  .icon-bg-green { background: rgba(16,185,129,0.15); }
+  .icon-bg-amber { background: rgba(245,158,11,0.15); }
+  .icon-bg-red { background: rgba(239,68,68,0.12); }
+  .tech-name { font-size: 12px; font-weight: 500; color: #e2e8f0; }
+  .tech-role { font-size: 10px; color: rgba(148,163,184,0.55); }
+
+  /* PERF METRIC */
+  .metric-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .metric-card {
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .metric-value {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .metric-label {
+    font-size: 10px;
+    color: rgba(148,163,184,0.5);
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+  .color-green { color: #34d399; }
+  .color-blue { color: #60a5fa; }
+  .color-purple { color: #a78bfa; }
+
+  /* DIVIDER */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    margin: 6px 0 20px;
+  }
+</style>
+
+<div class="root">
+
+  <!-- HEADER -->
+  <div class="header">
+    <span class="badge badge-purple">
+      <span class="dot"></span>
+      Live Architecture
+    </span>
+    <h1>MockStream Design Flow</h1>
+    <p>Webhook inspection pipeline · Real-time streaming · Local dev tunneling</p>
+  </div>
+
+  <!-- SECTION 1: INGESTION LAYER -->
+  <div class="section-label">01 — Ingestion Layer</div>
+  <div class="flow-row flow-row-3">
+    <div class="flow-card glass accent-blue">
+      <span class="flow-card-icon">🌐</span>
+      <span class="tag-blue flow-card-tag">Entry</span>
+      <div class="flow-card-title">Third-party webhook</div>
+      <div class="flow-card-desc">Stripe, Shopify, GitHub — static public endpoint. No URL reconfiguration needed.</div>
+    </div>
+    <div class="flow-card glass accent-green">
+      <span class="flow-card-icon">⚡</span>
+      <span class="tag-green flow-card-tag">≤100ms</span>
+      <div class="flow-card-title">Fastify edge gateway</div>
+      <div class="flow-card-desc">Non-blocking ingestion. Responds 202 Accepted before downstream processing begins.</div>
+    </div>
+    <div class="flow-card glass accent-amber">
+      <span class="flow-card-icon">🔄</span>
+      <span class="tag-amber flow-card-tag">Normalize</span>
+      <div class="flow-card-title">Payload sanitizer</div>
+      <div class="flow-card-desc">Conflicting shapes resolved into strongly-typed JSONB documents. Headers preserved.</div>
+    </div>
+  </div>
+
+  <!-- INGESTION PIPELINE -->
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="pulse"></div>
+      <div class="pipeline-step-num">Step 01</div>
+      <div class="pipeline-step-name">HTTP Receive</div>
+      <div class="pipeline-step-sub">POST /ingest/:id</div>
+    </div>
+    <div class="pipeline-step">
+      <div class="pipeline-step-num">Step 02</div>
+      <div class="pipeline-step-name">Header parse</div>
+      <div class="pipeline-step-sub">Extract metadata</div>
+    </div>
+    <div class="pipeline-step">
+      <div class="pipeline-step-num">Step 03</div>
+      <div class="pipeline-step-name">Body normalize</div>
+      <div class="pipeline-step-sub">JSON → JSONB</div>
+    </div>
+    <div class="pipeline-step">
+      <div class="pipeline-step-num">Step 04</div>
+      <div class="pipeline-step-name">Ack flush</div>
+      <div class="pipeline-step-sub">202 → upstream</div>
+    </div>
+    <div class="pipeline-step">
+      <div class="pipeline-step-num">Step 05</div>
+      <div class="pipeline-step-name">Redis publish</div>
+      <div class="pipeline-step-sub">Pub/Sub channel</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 2: TECH STACK -->
+  <div class="section-label">02 — Technology Stack</div>
+  <div class="tech-grid">
+    <div class="tech-item glass-strong">
+      <div class="tech-icon-wrap icon-bg-green">🟢</div>
+      <div>
+        <div class="tech-name">Node.js / Fastify</div>
+        <div class="tech-role">Backend · Ingestion gateway</div>
+      </div>
+    </div>
+    <div class="tech-item glass-strong">
+      <div class="tech-icon-wrap icon-bg-blue">🔌</div>
+      <div>
+        <div class="tech-name">WebSockets (ws)</div>
+        <div class="tech-role">Streaming · Bidirectional duplex</div>
+      </div>
+    </div>
+    <div class="tech-item glass-strong">
+      <div class="tech-icon-wrap icon-bg-blue">🐘</div>
+      <div>
+        <div class="tech-name">PostgreSQL JSONB</div>
+        <div class="tech-role">Persistence · ACID + semi-structured</div>
+      </div>
+    </div>
+    <div class="tech-item glass-strong">
+      <div class="tech-icon-wrap icon-bg-red">🔴</div>
+      <div>
+        <div class="tech-name">Redis Pub/Sub</div>
+        <div class="tech-role">Message broker · Decouples edge → WS</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 3: STREAMING LAYER -->
+  <div class="section-label">03 — Real-time Streaming</div>
+  <div class="flow-row flow-row-2">
+    <div class="flow-card glass accent-purple">
+      <span class="flow-card-icon">📡</span>
+      <span class="tag-purple flow-card-tag">WS</span>
+      <div class="flow-card-title">WebSocket handshake</div>
+      <div class="flow-card-desc">Authenticated upgrade via <code style="font-size:10px;color:#c4b5fd">endpoint_id</code> + <code style="font-size:10px;color:#c4b5fd">token</code> query params. Persistent duplex channel opened.</div>
+    </div>
+    <div class="flow-card glass accent-teal">
+      <span class="flow-card-icon">💡</span>
+      <span class="tag-green flow-card-tag">Push</span>
+      <div class="flow-card-title">Redis → WS bridge</div>
+      <div class="flow-card-desc">Subscriber listens on Redis channel. Ingested events pushed to all connected dashboard clients instantly.</div>
+    </div>
+  </div>
+
+  <!-- WS SPEC -->
+  <div class="spec-card glass">
+    <div class="spec-title">WebSocket connection init</div>
+    <div class="code-block">
+      <span class="code-green">GET</span> <span class="code-blue">/v1/stream</span><span class="code-amber">?endpoint_id=ep_8f9a2b&token=ms_live_99217</span> HTTP/1.1<br>
+      <span class="code-purple">Host:</span> api.mockstream.dev<br>
+      <span class="code-purple">Upgrade:</span> websocket<br>
+      <span class="code-purple">Connection:</span> Upgrade
+    </div>
+    <div class="formula-box">
+      <span class="formula-icon">⏱</span>
+      <div>
+        <div class="formula-text">T_drop = T_interval × 2 + T_tolerance</div>
+        <div class="formula-note">Connection dropped if pong signals miss the keepalive window. Worker allocations freed immediately.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 4: INSPECTION + REPLAY -->
+  <div class="section-label">04 — Inspection &amp; Replay Engine</div>
+  <div class="flow-row flow-row-3">
+    <div class="flow-card glass accent-blue">
+      <span class="flow-card-icon">🖥</span>
+      <span class="tag-blue flow-card-tag">UI</span>
+      <div class="flow-card-title">Dark visual terminal</div>
+      <div class="flow-card-desc">Stream-oriented inspector. Shows headers, JSON bodies, metadata in real time.</div>
+    </div>
+    <div class="flow-card glass accent-amber">
+      <span class="flow-card-icon">📋</span>
+      <span class="tag-amber flow-card-tag">Replay</span>
+      <div class="flow-card-title">Request replay</div>
+      <div class="flow-card-desc">Resubmit any captured request to <code style="font-size:10px;color:#fcd34d">localhost:X</code>. Bypasses upstream. Edge test optimization.</div>
+    </div>
+    <div class="flow-card glass accent-red">
+      <span class="flow-card-icon">🔒</span>
+      <span class="tag-red flow-card-tag">Stable</span>
+      <div class="flow-card-title">Persistent endpoints</div>
+      <div class="flow-card-desc">Static public URLs survive dev restarts. Third-party dashboards never need reconfiguring.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 5: PERFORMANCE SLAs -->
+  <div class="section-label">05 — Performance SLAs</div>
+  <div class="metric-row">
+    <div class="metric-card glass">
+      <div class="metric-value color-green">≤100ms</div>
+      <div class="metric-label">Ingestion ACK</div>
+    </div>
+    <div class="metric-card glass">
+      <div class="metric-value color-blue">~0ms</div>
+      <div class="metric-label">WS push latency</div>
+    </div>
+    <div class="metric-card glass">
+      <div class="metric-value color-purple">ACID</div>
+      <div class="metric-label">Persistence guarantee</div>
+    </div>
+  </div>
+
+</div>
