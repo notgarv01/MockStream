@@ -4,8 +4,9 @@ import PipelineVisualizer from './components/PipelineVisualizer';
 import WebhookTerminal from './components/WebhookTerminal';
 import { Copy, Check, Terminal, Play, Zap, Database } from 'lucide-react';
 
-const BACKEND_URL = 'http://localhost:5000';
-const WS_URL = 'ws://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+
 
 export default function App() {
   const [endpoints, setEndpoints] = useState([]);

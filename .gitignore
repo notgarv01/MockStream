@@ -3,7 +3,8 @@ backend/node_modules/
 frontend/node_modules/
 dist/
 frontend/dist/
-backend/.env
+.env
+**/.env
 backend/mockstream.db
 .vscode/
 .idea/
