@@ -5,6 +5,7 @@ dist/
 frontend/dist/
 .env
 **/.env
+*-firebase-adminsdk-*.json
 backend/mockstream.db
 .vscode/
 .idea/
