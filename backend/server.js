@@ -62,6 +62,13 @@ fastify.decorate('authenticate', async (request, reply) => {
       return reply.code(401).send({ error: 'Unauthorized', message: 'Missing Authorization header' });
     }
     const token = authHeader.split('Bearer ')[1];
+    
+    // Allow local dev bypass
+    if (token === 'mock-dev-token' && process.env.NODE_ENV !== 'production') {
+      request.user = { uid: 'dev_user_uid', email: 'dev@mockstream.dev' };
+      return;
+    }
+    
     const decodedToken = await admin.auth().verifyIdToken(token);
     request.user = decodedToken;
   } catch (err) {

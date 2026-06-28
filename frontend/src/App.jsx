@@ -86,25 +86,15 @@ export default function App() {
     return headers;
   };
 
-  // Check backend availability on mount
+  // Check backend availability on mount using public health check API
   useEffect(() => {
-    if (!user) return;
-
-    async function loadInitialData() {
+    async function checkBackend() {
       try {
-        const authHeaders = await getAuthHeaders();
-        const res = await fetch(`${BACKEND_URL}/v1/endpoints`, {
-          headers: authHeaders
-        });
-        if (!res.ok) throw new Error('API Error');
-        const data = await res.json();
-        setEndpoints(data);
+        const res = await fetch(`${BACKEND_URL}/v1/health`);
+        if (!res.ok) throw new Error('Health check failed');
         setIsDemoMode(false);
-        if (data.length > 0) {
-          setActiveEndpointId(data[0].id);
-        }
       } catch (err) {
-        console.warn('Backend not detected, running in Demo Mode');
+        console.warn('Backend server not detected, falling back to Demo Mode');
         setIsDemoMode(true);
         // Setup initial demo endpoints
         const demoEps = [
@@ -115,8 +105,31 @@ export default function App() {
         setActiveEndpointId(demoEps[0].id);
       }
     }
+    checkBackend();
+  }, []);
+
+  // Fetch initial data once user is authenticated and backend is detected online
+  useEffect(() => {
+    if (!user || isDemoMode) return;
+
+    async function loadInitialData() {
+      try {
+        const authHeaders = await getAuthHeaders();
+        const res = await fetch(`${BACKEND_URL}/v1/endpoints`, {
+          headers: authHeaders
+        });
+        if (!res.ok) throw new Error('Failed to load endpoints');
+        const data = await res.json();
+        setEndpoints(data);
+        if (data.length > 0) {
+          setActiveEndpointId(data[0].id);
+        }
+      } catch (err) {
+        console.error('API loading error:', err);
+      }
+    }
     loadInitialData();
-  }, [user]);
+  }, [user, isDemoMode]);
 
   // Fetch webhook logs when active endpoint changes
   useEffect(() => {
