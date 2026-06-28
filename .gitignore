@@ -11,3 +11,7 @@ backend/mockstream.db
 .DS_Store
 *.log
 *.local
+
+# PRD and design docs
+mockstream_prd_tech_spec.pdf
+mockstream_design_flow_glassmorphism.html
