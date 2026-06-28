@@ -366,9 +366,7 @@ export default function App() {
 
   const activeEp = endpoints.find(e => e.id === activeEndpointId);
   const ingestUrl = activeEp ? `${BACKEND_URL}/ingest/${activeEp.id}` : '';
-  const curlCommand = activeEp ? `curl -X POST ${ingestUrl} \\
-  -H "Content-Type: application/json" \\
-  -d '{"event": "test.ping", "data": {"status": "active", "timestamp": ${Math.floor(Date.now() / 1000)}}}'` : '';
+  const curlCommand = activeEp ? `curl -X POST ${ingestUrl} -H "Content-Type: application/json" -d "{\\\"event\\\": \\\"test.ping\\\", \\\"data\\\": {\\\"status\\\": \\\"active\\\", \\\"timestamp\\\": ${Math.floor(Date.now() / 1000)}}}"` : '';
 
   const copyToClipboard = (text, setCopiedState) => {
     navigator.clipboard.writeText(text);
