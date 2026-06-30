@@ -661,15 +661,20 @@ function QuickTestCommand({ ingestUrl, timestamp, onCopy }) {
   const [tab, setTab] = useState('bash');
   const [copied, setCopied] = useState(false);
 
-  // Per-tab snippets. Single-quoted `-d` body keeps the inner `"` literal in
-  // all three shells; PowerShell additionally uses `Invoke-RestMethod` so we
-  // never touch the `curl`/`Invoke-WebRequest` alias trap.
+  // Per-tab snippets.
+  //   - Bash: `\` line-continuation, single-quoted `-d` body (no escaping needed).
+  //   - PowerShell: `Invoke-RestMethod` sidesteps the `curl`/`Invoke-WebRequest`
+  //     alias trap, single-quoted `-Body` keeps inner `"` literal.
+  //   - CMD: CMD's only string-escape is `\"`, so the outer `-d` is double-
+  //     quoted and inner quotes are escaped. `\\` in the JS source renders
+  //     to a single literal `\` on the page, which is exactly what CMD needs
+  //     to keep the JSON payload as one cohesive string.
   const commands = {
     bash: `curl -X POST ${ingestUrl} \\
   -H "Content-Type: application/json" \\
   -d '{"event": "test.ping", "data": {"status": "active", "timestamp": ${timestamp}}}'`,
     powershell: `Invoke-RestMethod -Uri "${ingestUrl}" -Method Post -ContentType "application/json" -Body '{"event": "test.ping", "data": {"status": "active", "timestamp": ${timestamp}}}'`,
-    cmd: `curl.exe -X POST ${ingestUrl} -H "Content-Type: application/json" -d '{"event": "test.ping", "data": {"status": "active", "timestamp": ${timestamp}}}'`
+    cmd: `curl -X POST ${ingestUrl} -H "Content-Type: application/json" -d "{\\"event\\": \\"test.ping\\", \\"data\\": {\\"status\\": \\"active\\", \\"timestamp\\": ${timestamp}}}"`
   };
 
   const handleCopy = () => {
