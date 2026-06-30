@@ -3,7 +3,7 @@ import EndpointSidebar from './components/EndpointSidebar';
 import PipelineVisualizer from './components/PipelineVisualizer';
 import WebhookTerminal from './components/WebhookTerminal';
 import AuthScreen from './components/AuthScreen';
-import { Copy, Check, Terminal, Play, Zap, Database } from 'lucide-react';
+import { Copy, Check, Terminal, Play, Zap, Database, Trash2 } from 'lucide-react';
 import { auth, isFirebaseConfigured, signOut } from './firebase';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
@@ -24,7 +24,6 @@ export default function App() {
   const [wsConnected, setWsConnected] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
-  const [copiedCurl, setCopiedCurl] = useState(false);
 
   const socketRef = useRef(null);
 
@@ -254,6 +253,50 @@ export default function App() {
     setActiveWebhook(null);
   };
 
+  const handleDeleteEndpoint = async (endpointId) => {
+    if (isDemoMode) {
+      // Demo path — purely local state mutation.
+      setEndpoints(prev => prev.filter(e => e.id !== endpointId));
+      if (activeEndpointId === endpointId) {
+        setActiveEndpointId(prev => {
+          const remaining = endpoints.filter(e => e.id !== endpointId);
+          return remaining[0]?.id || '';
+        });
+        setWebhooks([]);
+        setActiveWebhook(null);
+      }
+      return;
+    }
+
+    try {
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch(`${BACKEND_URL}/v1/endpoints/${endpointId}`, {
+        method: 'DELETE',
+        headers: authHeaders
+      });
+      if (res.status === 401) {
+        console.warn('Unauthorized request. Session expired or invalid. Logging out.');
+        handleLogOut();
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Delete failed (${res.status})`);
+      }
+      setEndpoints(prev => prev.filter(e => e.id !== endpointId));
+      if (activeEndpointId === endpointId) {
+        setActiveEndpointId(prev => {
+          const remaining = endpoints.filter(e => e.id !== endpointId);
+          return remaining[0]?.id || '';
+        });
+        setWebhooks([]);
+        setActiveWebhook(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete endpoint:', err);
+    }
+  };
+
   // Demo simulator trigger
   const handleSimulateWebhook = () => {
     const providers = ['Stripe', 'Shopify', 'GitHub'];
@@ -366,7 +409,7 @@ export default function App() {
 
   const activeEp = endpoints.find(e => e.id === activeEndpointId);
   const ingestUrl = activeEp ? `${BACKEND_URL}/ingest/${activeEp.id}` : '';
-  const curlCommand = activeEp ? `curl.exe -X POST ${ingestUrl} -H "Content-Type: application/json" -d '{"event": "test.ping", "data": {"status": "active", "timestamp": ${Math.floor(Date.now() / 1000)}}}'` : '';
+  const curlTimestamp = Math.floor(Date.now() / 1000);
 
   const copyToClipboard = (text, setCopiedState) => {
     navigator.clipboard.writeText(text);
@@ -403,6 +446,7 @@ export default function App() {
         activeEndpointId={activeEndpointId}
         onSelectEndpoint={setActiveEndpointId}
         onCreateEndpoint={handleCreateEndpoint}
+        onDeleteEndpoint={handleDeleteEndpoint}
         isCreating={isCreating}
         wsConnected={wsConnected}
         user={user}
@@ -459,15 +503,11 @@ export default function App() {
                 </div>
               </div>
               
-              <div style={{ marginTop: '16px' }}>
-                <div className="form-label" style={{ fontSize: '10px' }}>Send Quick Test Command (curl)</div>
-                <div className="url-box">
-                  <input type="text" readOnly className="url-input" style={{ color: '#e2e8f0', fontSize: '10.5px' }} value={curlCommand} />
-                  <button className="btn-icon" onClick={() => copyToClipboard(curlCommand, setCopiedCurl)}>
-                    {copiedCurl ? <Check size={14} className="code-green" /> : <Copy size={14} />}
-                  </button>
-                </div>
-              </div>
+              <QuickTestCommand
+                ingestUrl={ingestUrl}
+                timestamp={curlTimestamp}
+                onCopy={copyToClipboard}
+              />
             </div>
 
             {/* Ingestion Visual Pipeline */}
@@ -610,4 +650,65 @@ function getMockWebhookLogs(endpointId) {
     ];
   }
   return [];
+}
+
+// Tabbed quick-test command generator — Bash / PowerShell / CMD snippets
+// for the currently selected endpoint. Each tab produces a platform-correct
+// string that can be copy-pasted directly into that terminal without quoting
+// corruption (single-quoted JSON body, `curl.exe` to dodge the PowerShell
+// `Invoke-WebRequest` alias).
+function QuickTestCommand({ ingestUrl, timestamp, onCopy }) {
+  const [tab, setTab] = useState('bash');
+  const [copied, setCopied] = useState(false);
+
+  // Per-tab snippets. Single-quoted `-d` body keeps the inner `"` literal in
+  // all three shells; PowerShell additionally uses `Invoke-RestMethod` so we
+  // never touch the `curl`/`Invoke-WebRequest` alias trap.
+  const commands = {
+    bash: `curl -X POST ${ingestUrl} \\
+  -H "Content-Type: application/json" \\
+  -d '{"event": "test.ping", "data": {"status": "active", "timestamp": ${timestamp}}}'`,
+    powershell: `Invoke-RestMethod -Uri "${ingestUrl}" -Method Post -ContentType "application/json" -Body '{"event": "test.ping", "data": {"status": "active", "timestamp": ${timestamp}}}'`,
+    cmd: `curl.exe -X POST ${ingestUrl} -H "Content-Type: application/json" -d '{"event": "test.ping", "data": {"status": "active", "timestamp": ${timestamp}}}'`
+  };
+
+  const handleCopy = () => {
+    onCopy(commands[tab], setCopied);
+  };
+
+  const tabs = [
+    { id: 'bash', label: 'Bash / macOS' },
+    { id: 'powershell', label: 'PowerShell' },
+    { id: 'cmd', label: 'Windows CMD' }
+  ];
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <div className="form-label" style={{ fontSize: '10px', marginBottom: '6px' }}>Send Quick Test Command</div>
+      <div className="detail-tabs" style={{ width: 'fit-content' }}>
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            className={`tab-btn ${tab === t.id ? 'active' : ''}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="code-block" style={{ position: 'relative', marginTop: '6px' }}>
+        <code>{commands[tab]}</code>
+        <button
+          type="button"
+          className="btn-icon"
+          onClick={handleCopy}
+          style={{ position: 'absolute', right: '10px', top: '10px' }}
+          title="Copy command"
+        >
+          {copied ? <Check size={14} className="code-green" /> : <Copy size={14} />}
+        </button>
+      </div>
+    </div>
+  );
 }

@@ -132,6 +132,30 @@ export async function getEndpoint(id) {
   }
 }
 
+export async function deleteEndpoint(id, userId) {
+  if (dbType === 'mongodb') {
+    const result = await mongoDb.collection('endpoints').findOneAndDelete({ id, userId });
+    // Mongo has no FK constraint — cascade-delete the matching webhooks ourselves.
+    await mongoDb.collection('webhooks').deleteMany({ endpoint_id: id });
+    return !!result;
+  } else if (dbType === 'postgres') {
+    // Postgres identifier is folded to lowercase `userid` (unquoted in DDL) — match
+    // the same case style as createEndpoint / getEndpointsForUser above.
+    const res = await pgPool.query(
+      'DELETE FROM endpoints WHERE id = $1 AND userId = $2',
+      [id, userId]
+    );
+    return res.rowCount > 0;
+  } else {
+    // SQLite column is unquoted as `userId` — same identifier.
+    const res = await sqliteDb.run(
+      'DELETE FROM endpoints WHERE id = ? AND userId = ?',
+      [id, userId]
+    );
+    return res.changes > 0;
+  }
+}
+
 export async function getEndpointsForUser(userId) {
   if (dbType === 'mongodb') {
     return await mongoDb.collection('endpoints')

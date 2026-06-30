@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Plus, Terminal, Wifi, Copy, Check } from 'lucide-react';
+import { Plus, Terminal, Wifi, Copy, Check, Trash2 } from 'lucide-react';
 
-export default function EndpointSidebar({ 
-  endpoints, 
-  activeEndpointId, 
-  onSelectEndpoint, 
-  onCreateEndpoint, 
+export default function EndpointSidebar({
+  endpoints,
+  activeEndpointId,
+  onSelectEndpoint,
+  onCreateEndpoint,
+  onDeleteEndpoint,
   isCreating,
   wsConnected,
   user,
@@ -14,6 +15,10 @@ export default function EndpointSidebar({
   const [newEndpointName, setNewEndpointName] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+  // Two-step delete: clicking the trash flips a row into "Confirm?" mode.
+  // Any other action (selecting a different endpoint, clicking another row's
+  // trash, etc.) resets this back to null. No modal, no `window.confirm`.
+  const [confirmingId, setConfirmingId] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -28,6 +33,23 @@ export default function EndpointSidebar({
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleTrashClick = (e, ep) => {
+    e.stopPropagation();
+    if (confirmingId !== ep.id) {
+      // First click: enter confirm mode for this row.
+      setConfirmingId(ep.id);
+      return;
+    }
+    // Second click: actually fire the delete.
+    onDeleteEndpoint(ep.id);
+    setConfirmingId(null);
+  };
+
+  const handleSelect = (ep) => {
+    setConfirmingId(null);
+    onSelectEndpoint(ep.id);
   };
 
   return (
@@ -51,11 +73,12 @@ export default function EndpointSidebar({
         ) : (
           endpoints.map((ep, idx) => {
             const isActive = ep.id === activeEndpointId;
+            const isConfirming = confirmingId === ep.id;
             return (
               <div
                 key={ep.id || ep._id || idx}
                 className={`endpoint-item glass ${isActive ? 'active' : ''}`}
-                onClick={() => onSelectEndpoint(ep.id)}
+                onClick={() => handleSelect(ep)}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="endpoint-item-name">{ep.name}</span>
@@ -75,6 +98,35 @@ export default function EndpointSidebar({
                         <Copy size={11} style={{ opacity: 0.6 }} />
                       )}
                     </button>
+                    {onDeleteEndpoint && (isConfirming ? (
+                      <button
+                        onClick={(e) => handleTrashClick(e, ep)}
+                        className="btn-icon"
+                        style={{
+                          padding: '2px 8px',
+                          background: 'rgba(244, 63, 94, 0.15)',
+                          border: '1px solid rgba(244, 63, 94, 0.4)',
+                          borderRadius: '6px',
+                          color: '#fda4af',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          letterSpacing: '0.3px',
+                          cursor: 'pointer'
+                        }}
+                        title="Click again to confirm"
+                      >
+                        Confirm?
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => handleTrashClick(e, ep)}
+                        className="btn-icon"
+                        style={{ padding: '3px', background: 'transparent', border: 'none' }}
+                        title="Delete endpoint"
+                      >
+                        <Trash2 size={11} style={{ opacity: 0.6, color: '#fda4af' }} />
+                      </button>
+                    ))}
                   </div>
                 </div>
                 <span className="endpoint-item-id">{ep.id}</span>
@@ -111,7 +163,7 @@ export default function EndpointSidebar({
         ) : (
           endpoints.length > 0 && (
             <button
-              onClick={() => setShowAddForm(true)}
+              onClick={() => { setShowAddForm(true); setConfirmingId(null); }}
               className="btn-primary"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.15)', marginTop: '8px', color: '#c4b5fd' }}
             >
@@ -124,7 +176,7 @@ export default function EndpointSidebar({
       <div className="endpoint-actions">
         {endpoints.length === 0 && !showAddForm && (
           <button
-            onClick={() => setShowAddForm(true)}
+            onClick={() => { setShowAddForm(true); setConfirmingId(null); }}
             className="btn-primary"
             disabled={isCreating}
           >

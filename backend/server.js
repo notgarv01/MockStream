@@ -253,9 +253,28 @@ fastify.post('/v1/endpoints', { preHandler: [fastify.authenticate] }, async (req
   const { name } = request.body || {};
   const endpointId = 'ep_' + uuidv4().replace(/-/g, '').slice(0, 8);
   const token = 'ms_live_' + uuidv4().replace(/-/g, '').slice(0, 12);
-  
+
   const newEndpoint = await db.createEndpoint(endpointId, token, name || 'Unnamed Endpoint', request.user.uid);
   return newEndpoint;
+});
+
+// Delete endpoint (cascades to webhook history via DB schema)
+fastify.delete('/v1/endpoints/:endpoint_id', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  const { endpoint_id } = request.params;
+
+  const endpoint = await db.getEndpoint(endpoint_id);
+  if (!endpoint) {
+    return reply.code(404).send({ error: 'Endpoint not found' });
+  }
+  if (isFirebaseConfigured && endpoint.userId !== request.user.uid) {
+    return reply.code(403).send({ error: 'Forbidden', message: 'You do not own this endpoint' });
+  }
+
+  const removed = await db.deleteEndpoint(endpoint_id, endpoint.userId);
+  if (!removed) {
+    return reply.code(404).send({ error: 'Endpoint not found' });
+  }
+  return { ok: true };
 });
 
 // Get webhook history
